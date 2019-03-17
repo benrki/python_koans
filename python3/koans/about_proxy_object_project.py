@@ -18,17 +18,49 @@
 
 from runner.koan import *
 
+
 class Proxy:
+    internals = ['messages', 'was_called', '_messages',
+                 '_obj', '_record_call', 'number_of_times_called']
+
     def __init__(self, target_object):
         # WRITE CODE HERE
+        self._messages = {}
 
-        #initialize '_obj' attribute last. Trust me on this!
+        # initialize '_obj' attribute last. Trust me on this!
         self._obj = target_object
 
-    # WRITE CODE HERE
+    def __getattribute__(self, name):
+        if name in Proxy.internals:
+            return object.__getattribute__(self, name)
+        else:
+            self._record_call(name)
+            return getattr(object.__getattribute__(self, '_obj'), name)
+
+    def __setattr__(self, attr_name, value):
+        if (attr_name in Proxy.internals):
+            return super().__setattr__(attr_name, value)
+        else:
+            self._record_call(attr_name)
+            return object.__setattr__(object.__getattribute__(
+                self, '_obj'), attr_name, value)
+
+    def messages(self):
+        return list(self._messages)
+
+    def _record_call(self, name):
+        self._messages[name] = self._messages.get(name, 0) + 1
+
+    def was_called(self, name):
+        return name in self._messages
+
+    def number_of_times_called(self, name):
+        return self._messages.get(name, 0)
 
 # The proxy object should pass the following Koan:
 #
+
+
 class AboutProxyObjectProject(Koan):
     def test_proxy_method_returns_wrapped_object(self):
         # NOTE: The Television class is defined below
@@ -58,7 +90,6 @@ class AboutProxyObjectProject(Koan):
 
         with self.assertRaises(AttributeError):
             tv.no_such_method()
-
 
     def test_proxy_reports_methods_have_been_called(self):
         tv = Proxy(Television())
@@ -97,6 +128,8 @@ class AboutProxyObjectProject(Koan):
 # changes should be necessary to anything below this comment.
 
 # Example class using in the proxy testing above.
+
+
 class Television:
     def __init__(self):
         self._channel = None
@@ -120,6 +153,8 @@ class Television:
         return self._power == 'on'
 
 # Tests for the Television class.  All of theses tests should pass.
+
+
 class TelevisionTest(Koan):
     def test_it_turns_on(self):
         tv = Television()
